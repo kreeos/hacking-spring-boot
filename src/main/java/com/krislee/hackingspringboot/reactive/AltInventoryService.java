@@ -9,12 +9,12 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
-public class InventoryService {
+public class AltInventoryService {
     private ItemRepository itemRepository;
     private CartRepository cartRepository;
     private ItemByExampleRepository exampleRepository;
 
-    InventoryService(ItemRepository itemRepository, CartRepository cartRepository) {
+    AltInventoryService(ItemRepository itemRepository, CartRepository cartRepository) {
         this.itemRepository = itemRepository;
         this.cartRepository = cartRepository;
     }
@@ -53,9 +53,9 @@ public class InventoryService {
         ExampleMatcher matcher = (useAnd // <2>
                 ? ExampleMatcher.matchingAll() //
                 : ExampleMatcher.matchingAny()) //
-                    .withStringMatcher(StringMatcher.CONTAINING) // <3>
-                    .withIgnoreCase() // <4>
-                    .withIgnorePaths("price"); // <5>
+                .withStringMatcher(StringMatcher.CONTAINING) // <3>
+                .withIgnoreCase() // <4>
+                .withIgnorePaths("price"); // <5>
 
         Example<Item> probe = Example.of(item, matcher);
         return itemRepository.findAll(probe);
@@ -63,29 +63,29 @@ public class InventoryService {
 
 
     Mono<Cart> addItemToCart(String cartId, String id) {
-        return this.cartRepository.findById(cartId)
+        Cart myCart = this.cartRepository.findById(cartId)
                 .log("foundCart")
                 .defaultIfEmpty(new Cart(cartId))
                 .log("emptyCart")
-                .flatMap(cart -> cart.getCartItems().stream()
-                        .filter(cartItem -> cartItem.getItem()
-                                .getId().equals(id))
-                        .findAny()
-                        .map(cartItem -> {
-                            cartItem.increment();
-                            return Mono.just(cart).log("newCartItem");
-                        })
-                        .orElseGet(() ->
-                                this.itemRepository.findById(id)
-                                        .log("fetchItem")
-                                        .map(CartItem::new)
-                                        .log("cartItem")
-                                        .doOnNext(cartItem ->
-                                                cart.getCartItems().add(cartItem))
-                                        .map(cartItem -> cart)).log("addedCartItem"))
-                .log("cartWithAnotherItem")
-                .flatMap(this.cartRepository::save)
-                .log("savedCart");
+                .block();
+        return myCart.getCartItems().stream()
+                .filter(cartItem -> cartItem.getItem()
+                        .getId().equals(id))
+                .findAny()
+                .map(cartItem -> {
+                    cartItem.increment();
+                    return Mono.just(myCart);
+                })
+                .orElseGet(() ->
+                        this.itemRepository.findById(id)
+                                .log("fetchItem")
+                                .map(item -> new CartItem(item))
+                                .log("cartItem")
+                                .map(cartItem -> {
+                                    myCart.getCartItems().add(cartItem);
+                                    return myCart;
+                                })).log("addedCartItem")
+                .flatMap(cart -> this.cartRepository.save(cart));
     }
 
     public Flux<Item> getInventory() {

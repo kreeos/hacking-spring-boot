@@ -13,60 +13,45 @@ import org.springframework.ui.Model;
 
 @Controller
 public class HomeController {
-    private ItemRepository itemRepository;
-    private CartRepository cartRepository;
-    private CartService cartService;
     private InventoryService inventoryService;
 
-    public HomeController(ItemRepository itemRepository, CartRepository cartRepository
-        , CartService cartService, InventoryService inventoryService) {
-        this.itemRepository = itemRepository;
-        this.cartRepository = cartRepository;
-        this.cartService = cartService;
+    public HomeController(InventoryService inventoryService) {
         this.inventoryService = inventoryService;
     }
+    // end::1[]
+
+    // tag::2[]
     @GetMapping
     Mono<Rendering> home() { // <1>
         return Mono.just(Rendering.view("home.html") // <2>
-                .modelAttribute("items", //
-                        this.itemRepository.findAll().doOnNext(System.out::println)) // <3>
-                .modelAttribute("cart", //
-                        this.cartRepository.findById("My Cart") // <4>
-                                .defaultIfEmpty(new Cart("My Cart")))
+                .modelAttribute("items", this.inventoryService.getInventory()) // <3>
+                .modelAttribute("cart", this.inventoryService.getCart("My Cart") // <4>
+                        .defaultIfEmpty(new Cart("My Cart")))
                 .build());
     }
     // end::2[]
 
     @PostMapping("/add/{id}")
     Mono<String> addToCart(@PathVariable String id) {
-        return this.cartService.addToCart("My Cart", id)
+        return this.inventoryService.addItemToCart("My Cart", id)
+                .thenReturn("redirect:/");
+    }
+
+    @DeleteMapping("/remove/{id}")
+    Mono<String> removeFromCart(@PathVariable String id) {
+        return this.inventoryService.removeOneFromCart("My Cart", id)
                 .thenReturn("redirect:/");
     }
 
     @PostMapping
     Mono<String> createItem(@ModelAttribute Item newItem) {
-        return this.itemRepository.save(newItem) //
+        return this.inventoryService.saveItem(newItem) //
                 .thenReturn("redirect:/");
     }
 
     @DeleteMapping("/delete/{id}")
     Mono<String> deleteItem(@PathVariable String id) {
-        return this.itemRepository.deleteById(id) //
+        return this.inventoryService.deleteItem(id) //
                 .thenReturn("redirect:/");
-    }
-
-    // tag::search[]
-    @GetMapping("/search") // <1>
-    Mono<Rendering> search( //
-                            @RequestParam(required = false) String name, // <2>
-                            @RequestParam(required = false) String description, //
-                            @RequestParam boolean useAnd) {
-        return Mono.just(Rendering.view("home.html") // <3>
-                .modelAttribute("items", //
-                        inventoryService.searchByExample(name, description, useAnd)) // <4>
-                .modelAttribute("cart", //
-                        this.cartRepository.findById("My Cart")
-                                .defaultIfEmpty(new Cart("My Cart")))
-                .build());
     }
 }
