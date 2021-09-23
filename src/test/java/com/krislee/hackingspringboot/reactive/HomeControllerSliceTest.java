@@ -3,6 +3,7 @@ package com.krislee.hackingspringboot.reactive;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import org.junit.jupiter.api.Disabled;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -12,7 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-
+@Disabled
 @WebFluxTest(HomeController.class) // <1>
 public class HomeControllerSliceTest {
 
